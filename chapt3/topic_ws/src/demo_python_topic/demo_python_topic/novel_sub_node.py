@@ -4,7 +4,7 @@ from example_interfaces.msg import String
 import threading
 from queue import Queue
 import time
-import espeakng
+import subprocess
 
 
 class NovelSubNode(Node):
@@ -20,20 +20,19 @@ class NovelSubNode(Node):
         self.novels_queue_.put(msg.data)
 
     def speak_thread(self):
-        speaker = espeakng.Speaker()
-        speaker.voice = 'zh'
         while rclpy.ok():
             if self.novels_queue_.qsize() > 0:
                 text = self.novels_queue_.get()
-                self.get_logger().info(f'正在朗读 {text}')
-                speaker.say(text)
-                speaker.wait()
+                self.get_logger().info(f'正在朗读: {text}')
+                # 使用 subprocess.Popen 异步调用 espeak-ng
+                subprocess.Popen(["espeak-ng", "-v", "zh", text])
             else:
-                time.sleep(1)
+                time.sleep(0.1)  # 减少 sleep 时间，避免延迟
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = NovelSubNode("novel_read")
     rclpy.spin(node)
+    node.speech_thread_.join()  # 等待线程结束
     rclpy.shutdown()
